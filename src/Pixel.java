@@ -23,7 +23,7 @@ public class Pixel {
 	}
 	
 	public String returnAsText () {
-		return a + ", " + b + ", " + g + ", " + r;
+		return a + ", " + r + ", " + g + ", " + b;
 	}
 	
 	public String returnPos () {

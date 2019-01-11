@@ -13,7 +13,7 @@ import org.w3c.dom.Node;
 
 public class Main {
 
-	public static int SCALE = 4;
+	public static int SCALE = 1;
 	
 	public static void main (String[] args) {
 		Main m = new Main();
@@ -185,6 +185,11 @@ public class Main {
 				}
 				System.out.println(s);
 				
+				if (reallyTruePix.size() < 2) {
+					System.out.println("One pixel province detected, please replace it");
+					return;
+				}
+				
 				//TODO: Better algorithm to convert to node
 				
 				LinkedList<Integer> nodeX = new LinkedList<Integer>();
@@ -254,7 +259,11 @@ public class Main {
 					}
 					if (!pixHistory.isEmpty()) {
 						historyOffset += 1;
-					eP = pixHistory.get(pixHistory.size() - historyOffset);
+						if (pixHistory.size() - historyOffset < 0) {
+							System.out.println("Enclaved province split province into 2! Color: " + eP.returnAsText());
+							return;
+						}
+						eP = pixHistory.get(pixHistory.size() - historyOffset);
 					} else {
 						break outer;
 					}
@@ -286,6 +295,53 @@ public class Main {
 				System.out.println(s3);
 				
 				String s4 = "";
+				for (int dir: nodeY) {
+					if (dir < 10) {
+						s4 += "[ " + dir +"],";
+					} else {
+						s4 += "[" + dir +"],";
+					}
+				}
+				System.out.println(s4);
+				System.out.println(t.dirLog);
+				
+				for (int i = 0; i < nodeX.size(); i++) {
+					int nextNode = (i + 1) % nodeX.size();
+					int lastNode = (i - 1);
+					if (lastNode < 0) lastNode += nodeX.size();
+					
+					//Last to Cur
+					int lastDeltaX = nodeX.get(lastNode) - nodeX.get(i); 
+					int lastDeltaY = nodeY.get(lastNode) - nodeY.get(i); 
+					float lastDeltaXn = lastDeltaX / (lastDeltaX + lastDeltaY);
+					float lastDeltaYn = lastDeltaY / (lastDeltaX + lastDeltaY);
+					
+					//Cur to Next
+					int nextDeltaX = nodeX.get(i) - nodeX.get(nextNode); 
+					int nextDeltaY = nodeY.get(i) - nodeY.get(nextNode); 
+					float nextDeltaXn = nextDeltaX / (nextDeltaX + nextDeltaY);
+					float nextDeltaYn = nextDeltaY / (nextDeltaX + nextDeltaY);
+					
+					if (nextDeltaXn == lastDeltaXn && nextDeltaYn == lastDeltaYn) {
+						nodeX.remove(i);
+						nodeY.remove(i);
+						i--;
+					}
+					
+				}
+				
+				s3 = "";
+				for (int dir: nodeX) {
+					if (dir < 10) {
+						s3 += "[ " + dir +"],";
+					} else {
+						s3 += "[" + dir +"],";
+					}
+					
+				}
+				System.out.println(s3);
+				
+				s4 = "";
 				for (int dir: nodeY) {
 					if (dir < 10) {
 						s4 += "[ " + dir +"],";
@@ -347,8 +403,6 @@ public class Main {
 					pix.opened = false;
 				}
 				
-				
-				
 			} else {
 				x++;
 				if (x >= width) {
@@ -383,6 +437,8 @@ public class Main {
 	            System.out.println("AoCC");
 	        }
 		}
+		
+		System.out.println("Finished!");
 		/*
 		for (int y = 0; y < height; y++) {
 			String s = y + ": ";

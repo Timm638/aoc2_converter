@@ -53,7 +53,7 @@ public class Turtle {
 		
 		for (byte i = 0; i < 8; i++) {
 			if (posToSearch[i].equals(startPosition)) {
-				System.out.println("WHHOP" + i);
+				System.out.println("Turtle last tile direction, to Start" + i);
 				directions.add(i);
 			}
 		}
