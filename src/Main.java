@@ -313,15 +313,27 @@ public class Main {
 					//Last to Cur
 					int lastDeltaX = nodeX.get(lastNode) - nodeX.get(i); 
 					int lastDeltaY = nodeY.get(lastNode) - nodeY.get(i); 
-					float lastDeltaXn = lastDeltaX / (lastDeltaX + lastDeltaY);
-					float lastDeltaYn = lastDeltaY / (lastDeltaX + lastDeltaY);
-					
+					float lastDeltaXn;
+					float lastDeltaYn;
+					if ((lastDeltaX + lastDeltaY) != 0) {
+						lastDeltaXn = lastDeltaX / (lastDeltaX + lastDeltaY);
+						lastDeltaYn = lastDeltaY / (lastDeltaX + lastDeltaY);
+					} else {
+						lastDeltaXn = 0;
+						lastDeltaYn = 0;
+					}
 					//Cur to Next
 					int nextDeltaX = nodeX.get(i) - nodeX.get(nextNode); 
 					int nextDeltaY = nodeY.get(i) - nodeY.get(nextNode); 
-					float nextDeltaXn = nextDeltaX / (nextDeltaX + nextDeltaY);
-					float nextDeltaYn = nextDeltaY / (nextDeltaX + nextDeltaY);
-					
+					float nextDeltaXn;
+					float nextDeltaYn;
+					if ((nextDeltaX + nextDeltaY) != 0) {
+						 nextDeltaXn = nextDeltaX / (nextDeltaX + nextDeltaY);
+						nextDeltaYn = nextDeltaY / (nextDeltaX + nextDeltaY);
+					} else {
+						nextDeltaXn = 0;
+						nextDeltaYn = 0;
+					}
 					if (nextDeltaXn == lastDeltaXn && nextDeltaYn == lastDeltaYn) {
 						nodeX.remove(i);
 						nodeY.remove(i);
