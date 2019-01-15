@@ -11,4 +11,4 @@ The provinces are outputted in the same folder as jar.
 The tool can be run by command line, allowing one to see the log:
 java -cp AoC2_Conv_0.1.jar Main "Path to image" SCALE
 
-Compiled files is AoC2_Conv_0.1.jar
+Compiled files is AoC2_Conv_0.21.jar
