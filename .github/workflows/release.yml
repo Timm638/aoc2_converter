@@ -15,10 +15,10 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
       - run: javac -d ./build src/aoc2_converter/*.java
-      - run: cd ./build
       - run: jar cfm ../release.jar ../src/Manifest.txt .
-      - run: cd ..
+        working-directory: ./build
       - uses: actions/upload-artifact@v6
         with:
           name: AoC2_Converter_${{github.ref_name}}.jar
+          path: ./release.jar
           if-no-files-found: error
