@@ -1,3 +1,5 @@
+package aoc2_converter;
+
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBuffer;
 import java.io.BufferedWriter;
@@ -9,8 +11,6 @@ import java.util.Collections;
 import java.util.LinkedList;
 
 import javax.imageio.ImageIO;
-
-import org.w3c.dom.Node;
 
 public class Main {
 

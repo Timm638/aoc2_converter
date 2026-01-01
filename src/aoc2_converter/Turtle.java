@@ -1,3 +1,5 @@
+package aoc2_converter;
+
 import java.util.LinkedList;
 
 public class Turtle {

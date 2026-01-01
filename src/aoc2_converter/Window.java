@@ -1,3 +1,5 @@
+package aoc2_converter;
+
 import java.awt.EventQueue;
 
 import javax.swing.JFrame;
