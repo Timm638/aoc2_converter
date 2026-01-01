@@ -20,4 +20,5 @@ jobs:
       - uses: actions/upload-artifact@v6
         with:
           name: AoC2_Converter_${{github.ref_name}}.jar
+          path: ./release.jar
           if-no-files-found: error
