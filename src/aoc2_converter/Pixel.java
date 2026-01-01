@@ -1,3 +1,4 @@
+package aoc2_converter;
 
 public class Pixel {
 	public int x;
