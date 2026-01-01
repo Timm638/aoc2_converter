@@ -9,16 +9,22 @@ jobs:
     name: Compile .jar
     runs-on: ubuntu-latest
     steps:
+      # Store the version, stripping any v-prefix
+      - name: Write release version
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          echo Version: $VERSION
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
       - uses: actions/checkout@v5
       - uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '21'
       - run: javac -d ./build src/aoc2_converter/*.java
-      - run: jar cfm ../AoC2_Converter_${{github.ref_name:1}}.jar ../src/Manifest.txt .
+      - run: jar cfm ../AoC2_Converter_${VERSION}.jar ../src/Manifest.txt .
         working-directory: ./build
       - uses: actions/upload-artifact@v6
         with:
-          name: AoC2 Converter ${{github.ref_name:1}}
-          path: ./AoC2_Converter_${{github.ref_name:1}}.jar
+          name: AoC2 Converter ${VERSION}
+          path: ./AoC2_Converter_${VERSION}.jar
           if-no-files-found: error
