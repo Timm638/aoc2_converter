@@ -25,6 +25,6 @@ jobs:
         working-directory: ./build
       - uses: actions/upload-artifact@v6
         with:
-          name: AoC2 Converter ${{github.ref_name#v}}.
+          name: AoC2 Converter ${{github.ref_name}}.
           path: ./release.jar
           if-no-files-found: error
