@@ -1,4 +1,4 @@
-package aoc2_converter;
+package de.timm638.aoc2_converter;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBuffer;
@@ -6,34 +6,49 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.LinkedList;
 
 import javax.imageio.ImageIO;
 
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.converters.FileConverter;
+
 public class Main {
 
-	public static int SCALE = 1;
-	
+	@Parameter(names={"--scale", "-s"}, description = "Modifier to scale image width")
+	public int scale = 1;
+
+	@Parameter(converter = FileConverter.class, description = "Path to an image file", required = true)
+	File inputImage;
+
+	@Parameter(names={"--verbose, -v"}, description = "Prints progress to console")
+	Boolean verbose = Boolean.FALSE;
+
 	public static void main (String[] args) {
-		Main m = new Main();
-		m.start(args);
+		Main main = new Main();
+		JCommander.newBuilder()
+				.addObject(main)
+				.build()
+				.parse(args);
+
+		long startTime = System.currentTimeMillis();
+		main.start();
+		long endTime = System.currentTimeMillis();
+		System.out.printf("The programm ran for %d ms", endTime - startTime);
 	}
 	
-	public void start (String[] args) {
+	public void start () {
 		Province.resetCounter();
-		BufferedImage img = null;
-		try {
-		    img = ImageIO.read(new File(args[0]));
-		} catch (IOException e) {
-		}
-		
-		if (args.length > 1) {
-			SCALE = Integer.parseInt(args[1]);
-		}
-		
-		int width = img.getWidth();
+        BufferedImage img;
+        try {
+            img = ImageIO.read(inputImage);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        int width = img.getWidth();
 		int height = img.getHeight();
 		
 		Pixel[][] pixels = convertImageToArray(img);
@@ -46,7 +61,7 @@ public class Main {
 		while (running) {
 			if (pixels[x][y] != null) {
 				
-				System.out.println("Start Comapre #" + provinceList.size());
+				System.out.println("Start Compare #" + provinceList.size());
 				String compareString = pixels[x][y].returnAsText();
 				
 				LinkedList<Pixel> truePix = getBlobOfColor(pixels, compareString, x, y);
@@ -161,11 +176,11 @@ public class Main {
 				
 				int[] nodeXArr = new int[nodeX.size()];
 				for (int nXi = 0; nXi < nodeX.size(); nXi++) {
-					nodeXArr[nXi] = nodeX.get(nXi) * SCALE;
+					nodeXArr[nXi] = nodeX.get(nXi) * scale;
 				}
 				int[] nodeYArr = new int[nodeY.size()];
 				for (int nYi = 0; nYi < nodeY.size(); nYi++) {
-					nodeYArr[nYi] = nodeY.get(nYi) * SCALE;
+					nodeYArr[nYi] = nodeY.get(nYi) * scale;
 				}
 				provinceList.add(new Province(nodeXArr,nodeYArr));
 				

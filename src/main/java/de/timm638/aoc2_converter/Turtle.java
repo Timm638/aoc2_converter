@@ -1,4 +1,4 @@
-package aoc2_converter;
+package de.timm638.aoc2_converter;
 
 import java.util.LinkedList;
 
@@ -55,7 +55,7 @@ public class Turtle {
 		
 		for (byte i = 0; i < 8; i++) {
 			if (posToSearch[i].equals(startPosition)) {
-				System.out.println("Turtle last tile direction, to Start" + i);
+				System.out.println("de.timm638.aoc2_converter.Turtle last tile direction, to Start" + i);
 				directions.add(i);
 			}
 		}

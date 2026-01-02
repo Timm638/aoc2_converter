@@ -1,4 +1,4 @@
-package aoc2_converter;
+package de.timm638.aoc2_converter;
 
 import java.util.LinkedList;
 

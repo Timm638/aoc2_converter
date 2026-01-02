@@ -1,4 +1,4 @@
-package aoc2_converter;
+package de.timm638.aoc2_converter;
 
 public class Province {
 	static int counter = 0;

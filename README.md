@@ -9,6 +9,6 @@ The scale increases the distances between the corners. If you have a scale of 2/
 The provinces are outputted in the same folder as jar.
 
 The tool can be run by command line, allowing one to see the log:
-java -cp AoC2_Conv_0.1.jar Main "Path to image" SCALE
+java -cp AoC2_Conv_0.1.jar de.timm638.aoc2_converter.Main "Path to image" SCALE
 
 Compiled files is AoC2_Conv_0.21.jar
