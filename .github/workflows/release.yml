@@ -1,7 +1,7 @@
 on:
   push:
-    tags:
-    - v**
+  #  tags:
+  #  - v**
   workflow_dispatch:
 
 jobs:
@@ -20,9 +20,9 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '21'
-      - run: javac -d ./build src/aoc2_converter/*.java
-      - run: jar cfm ../release.jar ../src/Manifest.txt .
-        working-directory: ./build
+      - name: Build with Maven
+        run: mvn --batch-mode --update-snapshots verify
+      - run: cp target/aoc2-converter-*.jar ./release.jar
       - uses: actions/upload-artifact@v6
         with:
           name: AoC2 Converter - ${{github.ref_name}}
