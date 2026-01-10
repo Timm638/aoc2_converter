@@ -2,6 +2,7 @@ package de.timm638.aoc2_converter;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBuffer;
+import java.awt.image.Raster;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -22,9 +23,19 @@ public class Main {
 
 	@Parameter(converter = FileConverter.class, description = "Path to an image file", required = true)
 	File inputImage;
+	private int height;
+	private int width;
 
-	@Parameter(names={"--verbose, -v"}, description = "Prints progress to console")
+	@Parameter(names={"--verbose", "-v"}, description = "Prints progress to console")
 	Boolean verbose = Boolean.FALSE;
+
+	int[][] provinceMap;
+
+	private void print(String str) {
+		if (verbose) {
+			System.out.println(str);
+		}
+	}
 
 	public static void main (String[] args) {
 		Main main = new Main();
@@ -33,70 +44,71 @@ public class Main {
 				.build()
 				.parse(args);
 
+		// For benchmarking
 		long startTime = System.currentTimeMillis();
 		main.start();
 		long endTime = System.currentTimeMillis();
-		System.out.printf("The programm ran for %d ms", endTime - startTime);
+		System.out.printf("The programm ran for %d ms\n", endTime - startTime);
 	}
-	
+
 	public void start () {
-		Province.resetCounter();
         BufferedImage img;
         try {
             img = ImageIO.read(inputImage);
+			width = img.getWidth();
+			height = img.getHeight();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
-        int width = img.getWidth();
-		int height = img.getHeight();
-		
+
+
 		Pixel[][] pixels = convertImageToArray(img);
-		
+
 		LinkedList<Province> provinceList = new LinkedList<Province>();
-		
-		boolean running = true;
+
 		int y = 0;
 		int x = 0;
-		while (running) {
+		while (y < height) {
+
 			if (pixels[x][y] != null) {
-				
-				System.out.println("Start Compare #" + provinceList.size());
-				String compareString = pixels[x][y].returnAsText();
-				
-				LinkedList<Pixel> truePix = getBlobOfColor(pixels, compareString, x, y);
-				LinkedList<Pixel> reallyTruePix = getBorderOfBlob(pixels, truePix);
-				
+
+				print("Generating Province #" + provinceList.size() + " of Color " + pixels[x][y].returnAsText());
+				Province prov = new Province(pixels, this, x, y);
+
+				LinkedList<Pixel> truePix = null;
+				getBlobOfColor(pixels, x, y, prov.id);
+				LinkedList<Pixel> reallyTruePix = getContourOfBlob(pixels, truePix);
+
 				String s = "";
 				for (Pixel pix : reallyTruePix) {
 					s += "[" + pix.x + "," + pix.y + "],";
 				}
-				System.out.println(s);
-				
+				print(s);
+
 				if (reallyTruePix.size() < 2) {
-					System.out.println("One pixel province detected, please replace it");
-					return;
+					print("WARNING: One pixel province detected, replace it");
 				}
-				
+
 				//TODO: Better algorithm to convert to node
-				
-				
+
+
 				Edges nodeDirection = returnEdgeByDirection(pixels, reallyTruePix);
-				
-				
+
+
 				String s2 = "";
 				for (Byte dir: nodeDirection.directions) {
 					s2 += "[" + dir +"],";
 				}
-				System.out.println(s2);
-				
+				print(s2);
+
 				LinkedList<Integer> nodeX = new LinkedList<Integer>();
 				LinkedList<Integer> nodeY = new LinkedList<Integer>();
-				
+
 				NodeList nl = generateNodeFromDirEdge(pixels, nodeDirection);
 				nodeX = nl.nodeX;
 				nodeY = nl.nodeY;
-				
+
 				String s3 = "";
 				for (int dir: nodeX) {
 					if (dir < 10) {
@@ -104,10 +116,10 @@ public class Main {
 					} else {
 						s3 += "[" + dir +"],";
 					}
-					
+
 				}
-				System.out.println(s3);
-				
+				print(s3);
+
 				String s4 = "";
 				for (int dir: nodeY) {
 					if (dir < 10) {
@@ -116,12 +128,12 @@ public class Main {
 						s4 += "[" + dir +"],";
 					}
 				}
-				System.out.println(s4);
-				
+				print(s4);
+
 				NodeList cleanedUpNodes = cleanupList(new NodeList(nodeX, nodeY));
 				nodeX = cleanedUpNodes.nodeX;
 				nodeY = cleanedUpNodes.nodeY;
-				
+
 				s3 = "";
 				for (int dir: nodeX) {
 					if (dir < 10) {
@@ -129,10 +141,10 @@ public class Main {
 					} else {
 						s3 += "[" + dir +"],";
 					}
-					
+
 				}
-				System.out.println(s3);
-				
+				print(s3);
+
 				s4 = "";
 				for (int dir: nodeY) {
 					if (dir < 10) {
@@ -141,39 +153,8 @@ public class Main {
 						s4 += "[" + dir +"],";
 					}
 				}
-				System.out.println(s4);
-				
-				//Managed to get border, using node Direction to create border
-				
-				//Prepare the Border
-				/*
-				int cursorX = startPixel.x;
-				int cursorY = startPixel.y;
-				int lastDir = 0;
-				//nodeX.add(cursorX); 
-				//nodeY.add(cursorY + 1);
-				
-				for (int i = 0; i < nodeDirection.size(); i++) {
-					switch (nodeDirection.get(i)) {
-					case 0: nodeX.add(cursorX); nodeY.add(cursorY + 1); nodeX.add(cursorX); nodeY.add(cursorY); cursorX += 0; cursorY -= 1; break;
-					case 1:
-						cursorX += 1; cursorY -= 1;  
-						break;
-					case 2: nodeX.add(cursorX); nodeY.add(cursorY); nodeX.add(cursorX + 1); nodeY.add(cursorY); cursorX += 1; cursorY += 0;  break;
-					case 3: nodeX.add(cursorX); nodeY.add(cursorY); nodeX.add(cursorX + 1); nodeY.add(cursorY); cursorX += 1; cursorY += 1;  break;
-					case 4: nodeX.add(cursorX + 1); nodeY.add(cursorY); nodeX.add(cursorX + 1); nodeY.add(cursorY + 1); cursorX += 0; cursorY += 1;  break;
-					case 5: cursorX -= 1; cursorY += 1; break;
-					case 6: nodeX.add(cursorX + 1); nodeY.add(cursorY + 1); nodeX.add(cursorX); nodeY.add(cursorY + 1); cursorX -= 1; cursorY += 0;  break;
-					case 7: cursorX -= 1; cursorY -= 1; break;
-					}
-					lastDir = nodeDirection.get(i);
-				}
-				*/
-				
-				
-				
-				
-				
+				print(s4);
+
 				int[] nodeXArr = new int[nodeX.size()];
 				for (int nXi = 0; nXi < nodeX.size(); nXi++) {
 					nodeXArr[nXi] = nodeX.get(nXi) * scale;
@@ -182,25 +163,22 @@ public class Main {
 				for (int nYi = 0; nYi < nodeY.size(); nYi++) {
 					nodeYArr[nYi] = nodeY.get(nYi) * scale;
 				}
-				provinceList.add(new Province(nodeXArr,nodeYArr));
-				
+				// provinceList.add(new Province(nodeXArr,nodeYArr));
+
 				for (Pixel pix : truePix) {
 						pixels[pix.x][pix.y] = null;
 				}
-				
-				
+
+
 			} else {
 				x++;
 				if (x >= width) {
 					x = 0;
 					y++;
-					if (y >= height) {
-						running = false;
-					}
 				}
 			}
 		}
-		
+
 		for (Province prov : provinceList) {
 			FileWriter fw = null;
 	        try {
@@ -220,135 +198,96 @@ public class Main {
 	            fw.close();
 	        }
 	        catch (IOException ex) {
-	            System.out.println("AoCC");
+	            print("AoCC");
 	        }
 		}
-		
-		System.out.println("Finished!");
+
+			print("Finished!");
 		/*
 		for (int y = 0; y < height; y++) {
 			String s = y + ": ";
 			for (int x = 0; x < width; x++) {
 				s += "[" + pixels[x][y].returnAsText() + "], ";
 			}
-			System.out.println(s);
+			print(s);
 		} */
 	}
-	
+
 	private Pixel[][] convertImageToArray (BufferedImage image) {
-		DataBuffer buffer = image.getRaster().getDataBuffer();
-		
-		int width = image.getWidth();
-		int height = image.getHeight();
+		Raster raster = image.getRaster();
+		final int width = image.getWidth();
+		final int height = image.getHeight();
 		Pixel[][] pixels = new Pixel[width][height];
-		
-		boolean isARGB = false;
-		
-		if (buffer.getSize() / (width * height) == 4) {
-			isARGB = true;
-		}
-		
+
 		for (int y = 0; y < height; y++) {
 			for (int x = 0; x < width; x++) {
-				if (isARGB) {
-					pixels[x][y] = new Pixel((byte)buffer.getElem(y * (width * 4) + x * 4), (byte)buffer.getElem(y * (width * 4) + x * 4 + 1), (byte)buffer.getElem(y * (width * 4) + x * 4 + 2), (byte)buffer.getElem(y * (width * 4) + x * 4 + 3), x, y);
-				} else {
-					pixels[x][y] = new Pixel((byte)0, (byte)buffer.getElem(y * (width * 3) + x * 3), (byte)buffer.getElem(y * (width * 3) + x * 3 + 1), (byte)buffer.getElem(y * (width * 3) + x * 3 + 2), x, y);
-				}
+				int[] pixelData = raster.getPixel(x, y, new int[4]);
+				pixels[x][y] = new Pixel(pixelData, x, y);
 			}
-			System.out.println("Pixeled Row " + y);
 		}
-		
+
 		return pixels;
 	}
-	
-	private LinkedList<Pixel> getBlobOfColor (Pixel[][] pixels, String cmp, int x, int y) {
-		
-		int width = pixels.length;
-		int height = pixels[0].length;
-		
-		LinkedList<Pixel> closedPixel = new LinkedList<Pixel>();
-		LinkedList<Pixel> openPixel = new LinkedList<Pixel>();
-		
-		pixels[x][y].opened = true;
-		
+
+	// In cardinal directions
+	private Pixel[] getCardinalNeighbours(Pixel[][] pixels, int x, int y) {
+		Pixel [] arr = {null, null, null, null};
+		if (x > 0) {
+			arr[0] = pixels[x - 1][y];
+		}
+		if (x < pixels.length - 1) {
+			arr[1] = pixels[x + 1][y];
+		}
+		if (y > 0) {
+			arr[2] = pixels[x][y - 1];
+		}
+		if (y < pixels[0].length - 1) {
+			arr[3] = pixels[x][y + 1];
+		}
+		return arr;
+	}
+
+	private Integer getBlobOfColor (Pixel[][] pixels, int x, int y, int new_id) {
+		final Pixel startPixel = pixels[x][y];
+		LinkedList<Pixel> closedPixel = new LinkedList<>();
+		LinkedList<Pixel> openPixel = new LinkedList<>();
+
 		openPixel.add(pixels[x][y]);
-		
+
 		while (!openPixel.isEmpty()) {
 			Pixel curPixel = openPixel.remove();
-			curPixel.opened = false;
 			closedPixel.add(curPixel);
-			curPixel.closed = true;
-			if (curPixel.returnAsText().equals(cmp)) {
-				Pixel nextPix;
-				if (curPixel.x > 0) {
-					nextPix = pixels[curPixel.x - 1][curPixel.y];
-					if (nextPix != null) {
-						if (!(nextPix.closed || nextPix.opened)) {
-						openPixel.add(nextPix);
-						nextPix.opened = true;
-						}
-					}
-				}
-				if (curPixel.x < width - 1) {
-					nextPix = pixels[curPixel.x + 1][curPixel.y];
-					if (nextPix != null) {
-						if (!(nextPix.closed || nextPix.opened)) {
-						openPixel.add(nextPix);
-						nextPix.opened = true;
-						}
-					}
-				}
-				if (curPixel.y > 0) {
-					nextPix = pixels[curPixel.x][curPixel.y - 1];
-					if (nextPix != null) {
-						if (!(nextPix.closed || nextPix.opened)) {
-						openPixel.add(nextPix);
-						nextPix.opened = true;
-						}
-					}
-				}
-				if (curPixel.y < height - 1) {
-					nextPix = pixels[curPixel.x][curPixel.y + 1];
-					if (nextPix != null) {
-						if (!(nextPix.closed || nextPix.opened)) {
-						openPixel.add(nextPix);
-						nextPix.opened = true;
-						}
+			Pixel[] neighbours = getCardinalNeighbours(pixels, curPixel.x, curPixel.y);
+			for (Pixel p : neighbours) {
+				if (p == null)
+					continue;
+
+				if (!closedPixel.contains(p) && !openPixel.contains(p)) {
+					if (p.compareTo(startPixel) == 0) {
+						openPixel.add(p);
+						provinceMap[p.x][p.y] = new_id;
+					} else {
+						closedPixel.add(p);
 					}
 				}
 			}
 		}
-		
-		LinkedList<Pixel> truePix = new LinkedList<Pixel>();
-		for (Pixel pix : closedPixel) {
-			if (pix.returnAsText().equals(cmp)) {
-				truePix.add(pix);
-			}
-		}
-		
-		for (Pixel pix : closedPixel) {
-			pix.closed = false;
-		}
-		for (Pixel pix : openPixel) {
-			pix.opened = false;
-		}
-		
-		return truePix;
+		return new_id;
 	}
-	
+
 	private LinkedList<Pixel> getBlobSurroundedByColor (Pixel[][] pixels, String cmp, int x, int y) {
-		
+
 		int width = pixels.length;
 		int height = pixels[0].length;
-		
-		LinkedList<Pixel> closedPixel = new LinkedList<Pixel>();
-		LinkedList<Pixel> openPixel = new LinkedList<Pixel>();
-		
-		pixels[x][y].opened = true;
-		
+
+		LinkedList<Pixel> closedPixel = new LinkedList<>();
+		LinkedList<Pixel> openPixel = new LinkedList<>();
+
+		LinkedList<Pixel> blobPixels = new LinkedList<>();
+
 		openPixel.add(pixels[x][y]);
-		
+		blobPixels.add(pixels[x][y]);
+
 		while (!openPixel.isEmpty()) {
 			Pixel curPixel = openPixel.remove();
 			curPixel.opened = false;
@@ -394,29 +333,29 @@ public class Main {
 				}
 			}
 		}
-		
+
 		LinkedList<Pixel> truePix = new LinkedList<Pixel>();
 		for (Pixel pix : closedPixel) {
 			if (!pix.returnAsText().equals(cmp)) {
 				truePix.add(pix);
 			}
 		}
-		
+
 		for (Pixel pix : closedPixel) {
 			pix.closed = false;
 		}
 		for (Pixel pix : openPixel) {
 			pix.opened = false;
 		}
-		
+
 		return truePix;
 	}
-	
-	private LinkedList<Pixel> getBorderOfBlob (Pixel[][] pixels, LinkedList<Pixel> truePix) {
-		
+
+	private LinkedList<Pixel> getContourOfBlob(Pixel[][] pixels, LinkedList<Pixel> truePix) {
+
 		int width = pixels.length;
 		int height = pixels[0].length;
-		
+
 		LinkedList<Pixel> reallyTruePix = new LinkedList<Pixel>();
 		for (Pixel pix : truePix) {
 			if (pix.x > 0) {
@@ -424,7 +363,7 @@ public class Main {
 					if (!pixels[pix.x - 1][pix.y].returnAsText().equals(pix.returnAsText())) {
 						reallyTruePix.add(pix);
 						continue;
-					} 
+					}
 				} else {
 					reallyTruePix.add(pix);
 					continue;
@@ -439,7 +378,7 @@ public class Main {
 					if (!pixels[pix.x + 1][pix.y].returnAsText().equals(pix.returnAsText())) {
 						reallyTruePix.add(pix);
 						continue;
-					} 
+					}
 				} else {
 					reallyTruePix.add(pix);
 					continue;
@@ -449,13 +388,13 @@ public class Main {
 				reallyTruePix.add(pix);
 				continue;
 			}
-			
+
 			if (pix.y > 0) {
 				if (pixels[pix.x][pix.y - 1] != null) {
 					if (!pixels[pix.x][pix.y - 1].returnAsText().equals(pix.returnAsText())) {
 						reallyTruePix.add(pix);
 						continue;
-					} 
+					}
 				} else {
 					reallyTruePix.add(pix);
 					continue;
@@ -470,7 +409,7 @@ public class Main {
 					if (!pixels[pix.x][pix.y + 1].returnAsText().equals(pix.returnAsText())) {
 						reallyTruePix.add(pix);
 						continue;
-					} 
+					}
 				} else {
 					reallyTruePix.add(pix);
 					continue;
@@ -483,12 +422,12 @@ public class Main {
 		}
 		return reallyTruePix;
 	}
-	
+
 private LinkedList<Pixel> getBorderOfMixedBlob (Pixel[][] pixels, LinkedList<Pixel> truePix, String cmpString) {
-		
+
 		int width = pixels.length;
 		int height = pixels[0].length;
-		
+
 		LinkedList<Pixel> reallyTruePix = new LinkedList<Pixel>();
 		for (Pixel pix : truePix) {
 			if (pix.x > 0) {
@@ -496,7 +435,7 @@ private LinkedList<Pixel> getBorderOfMixedBlob (Pixel[][] pixels, LinkedList<Pix
 					if (pixels[pix.x - 1][pix.y].returnAsText().equals(cmpString)) {
 						reallyTruePix.add(pix);
 						continue;
-					} 
+					}
 				} else {
 					reallyTruePix.add(pix);
 					continue;
@@ -511,7 +450,7 @@ private LinkedList<Pixel> getBorderOfMixedBlob (Pixel[][] pixels, LinkedList<Pix
 					if (pixels[pix.x + 1][pix.y].returnAsText().equals(cmpString)) {
 						reallyTruePix.add(pix);
 						continue;
-					} 
+					}
 				} else {
 					reallyTruePix.add(pix);
 					continue;
@@ -521,13 +460,13 @@ private LinkedList<Pixel> getBorderOfMixedBlob (Pixel[][] pixels, LinkedList<Pix
 				reallyTruePix.add(pix);
 				continue;
 			}
-			
+
 			if (pix.y > 0) {
 				if (pixels[pix.x][pix.y - 1] != null) {
 					if (pixels[pix.x][pix.y - 1].returnAsText().equals(cmpString)) {
 						reallyTruePix.add(pix);
 						continue;
-					} 
+					}
 				} else {
 					reallyTruePix.add(pix);
 					continue;
@@ -542,7 +481,7 @@ private LinkedList<Pixel> getBorderOfMixedBlob (Pixel[][] pixels, LinkedList<Pix
 					if (pixels[pix.x][pix.y + 1].returnAsText().equals(cmpString)) {
 						reallyTruePix.add(pix);
 						continue;
-					} 
+					}
 				} else {
 					reallyTruePix.add(pix);
 					continue;
@@ -555,17 +494,17 @@ private LinkedList<Pixel> getBorderOfMixedBlob (Pixel[][] pixels, LinkedList<Pix
 		}
 		return reallyTruePix;
 	}
-	
+
 	private Edges returnEdgeByDirection(Pixel[][] pixels, LinkedList<Pixel> reallyTruePix) {
-		
+
 		Edges edges = null;
-		
+
 		int width = pixels.length;
 		int height = pixels[0].length;
-		
+
 		LinkedList<Byte> nodeDirection = new LinkedList<Byte>();
 		LinkedList<Pixel> pixHistory = new LinkedList<Pixel>();
-		
+
 		Pixel eP = null;
 		outer:
 		for (int startY = 0; startY < height; startY++) {
@@ -580,7 +519,7 @@ private LinkedList<Pixel> getBorderOfMixedBlob (Pixel[][] pixels, LinkedList<Pix
 		Pixel startPixel = eP;
 		int dirOffset = 0;
 		int historyOffset = 0;
-		
+
 		outer:
 		while(!reallyTruePix.isEmpty()) {
 			String[] posToSearch = {
@@ -600,8 +539,8 @@ private LinkedList<Pixel> getBorderOfMixedBlob (Pixel[][] pixels, LinkedList<Pix
 				for (Pixel px : reallyTruePix) {
 					byte trueDir = ((byte)((curDir + dirOffset) % posToSearch.length));
 					if (trueDir < 0) trueDir += 8;
-					if (px.returnPos().equals(posToSearch[trueDir])) {
-						
+					if (true ) { // px.returnPos().equals(posToSearch[trueDir])
+
 						nodeDirection.add(trueDir);
 						dirOffset = trueDir - 3;
 						historyOffset = 0;
@@ -611,16 +550,16 @@ private LinkedList<Pixel> getBorderOfMixedBlob (Pixel[][] pixels, LinkedList<Pix
 						}
 						eP = px;
 						continue outer;
-					} else if (startPixel.returnPos().equals(posToSearch[trueDir]) && pixHistory.size() != 0) {
+					} else if (true && pixHistory.size() != 0) { // startPixel.returnPos().equals(posToSearch[trueDir]
 						edges = new Edges(startPixel.x, startPixel.y, nodeDirection);
 						edges.innerEdges = new LinkedList<Edges>();
-						
+
 						if (reallyTruePix.contains(eP)) {
 							reallyTruePix.remove(eP);
 							}
-						
+
 						Pixel nextPix = null;
-						
+
 						while (!reallyTruePix.isEmpty()) {
 							for (int startY = 0; startY < height; startY++) {
 								for (int startX = 0; startX < width; startX++) {
@@ -640,7 +579,7 @@ private LinkedList<Pixel> getBorderOfMixedBlob (Pixel[][] pixels, LinkedList<Pix
 							}
 						}
 
-						
+
 						return edges;
 					}
 				}
@@ -659,27 +598,27 @@ private LinkedList<Pixel> getBorderOfMixedBlob (Pixel[][] pixels, LinkedList<Pix
 				break outer;
 			}
 		}
-		System.out.println(pixHistory.get(pixHistory.size() - 1).x - startPixel.x);
-		System.out.println(pixHistory.get(pixHistory.size() - 1).y - startPixel.y);
-		
+		print(String.valueOf(pixHistory.get(pixHistory.size() - 1).x - startPixel.x));
+		print(String.valueOf(pixHistory.get(pixHistory.size() - 1).y - startPixel.y));
+
 		nodeDirection.removeLast();
-		
+
 		if (edges == null) {
 			edges = new Edges(startPixel.x, startPixel.y, nodeDirection);
 		}
-		
+
 		return edges;
 	}
-	
+
 	private NodeList generateNodeFromDirEdge (Pixel[][] pixels, Edges edges) {
 		LinkedList<Integer> nodeX = new LinkedList<Integer>();
 		LinkedList<Integer> nodeY = new LinkedList<Integer>();
-		
+
 		//TODO ADD SubEdges
-		
+
 		if (edges.innerEdges != null) {
 			for (Edges edg : edges.innerEdges) {
-				Turtle t = new Turtle(pixels[edg.startX][edg.startY], edg.directions); 
+				Turtle t = new Turtle(pixels[edg.startX][edg.startY], edg.directions);
 				LinkedList<Integer> innerNodeX = t.getNodeX();
 				LinkedList<Integer> innerNodeY = t.getNodeY();
 				innerNodeX.addLast(innerNodeX.getFirst());
@@ -690,7 +629,7 @@ private LinkedList<Pixel> getBorderOfMixedBlob (Pixel[][] pixels, LinkedList<Pix
 				nodeY.addAll(innerNodeY);
 			}
 		}
-		
+
 		//MainLine
 		Turtle t = new Turtle(pixels[edges.startX][edges.startY], edges.directions);
 		nodeX.addAll(t.getNodeX());
@@ -699,20 +638,20 @@ private LinkedList<Pixel> getBorderOfMixedBlob (Pixel[][] pixels, LinkedList<Pix
 		nodeY.addLast(t.getNodeY().getFirst());
 		return new NodeList(nodeX, nodeY);
 	}
-	
+
 	private NodeList cleanupList (NodeList nl) {
-		
+
 		LinkedList<Integer> nodeX = nl.nodeX;
 		LinkedList<Integer> nodeY = nl.nodeY;
-		
+
 		for (int i = 0; i < nodeX.size(); i++) {
 			int nextNode = (i + 1) % nodeX.size();
 			int lastNode = (i - 1);
 			if (lastNode < 0) lastNode += nodeX.size();
-			
+
 			//Last to Cur
-			int lastDeltaX = nodeX.get(lastNode) - nodeX.get(i); 
-			int lastDeltaY = nodeY.get(lastNode) - nodeY.get(i); 
+			int lastDeltaX = nodeX.get(lastNode) - nodeX.get(i);
+			int lastDeltaY = nodeY.get(lastNode) - nodeY.get(i);
 			float lastDeltaXn;
 			float lastDeltaYn;
 			if ((lastDeltaX + lastDeltaY) != 0) {
@@ -723,8 +662,8 @@ private LinkedList<Pixel> getBorderOfMixedBlob (Pixel[][] pixels, LinkedList<Pix
 				lastDeltaYn = 0;
 			}
 			//Cur to Next
-			int nextDeltaX = nodeX.get(i) - nodeX.get(nextNode); 
-			int nextDeltaY = nodeY.get(i) - nodeY.get(nextNode); 
+			int nextDeltaX = nodeX.get(i) - nodeX.get(nextNode);
+			int nextDeltaY = nodeY.get(i) - nodeY.get(nextNode);
 			float nextDeltaXn;
 			float nextDeltaYn;
 			if ((nextDeltaX + nextDeltaY) != 0) {

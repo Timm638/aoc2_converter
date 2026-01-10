@@ -1,33 +1,44 @@
 package de.timm638.aoc2_converter;
 
-public class Pixel {
-	public int x;
-	public int y;
-	
-	public byte a;
-	public byte b;
-	public byte g;
-	public byte r;
-	
+public class Pixel implements Comparable<Pixel> {
+	public int a = 0;
+	public int b;
+	public int g;
+	public int r;
+
+	final public int x;
+	final public int y;
 	public boolean opened;
 	public boolean closed;
-	
-	public Pixel (byte a, byte b, byte g, byte r, int x, int y) {
-		this.a = a;
-		this.b = b;
-		this.g = g;
-		this.r = r;
+
+	public Pixel (int[] arr, int x, int y) {
 		this.x = x;
 		this.y = y;
-		closed = false;
-		opened = false;
+
+		if (arr.length > 3) {
+			this.a = arr[3];
+		}
+		this.b = arr[2];
+		this.g = arr[1];
+		this.r = arr[0];
 	}
 	
 	public String returnAsText () {
 		return a + ", " + r + ", " + g + ", " + b;
 	}
-	
-	public String returnPos () {
-		return x + "," + y;
+
+	@Override
+	public int compareTo(Pixel oth) {
+		final int aComp = Integer.compare(a, oth.a);
+		final int bComp = Integer.compare(b, oth.b);
+		final int gComp = Integer.compare(g, oth.g);
+		final int rComp = Integer.compare(r, oth.r);
+		if (aComp != 0)
+			return aComp;
+		if (bComp != 0)
+			return bComp;
+		if (gComp != 0)
+			return gComp;
+		return rComp;
 	}
 }
