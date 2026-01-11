@@ -6,14 +6,12 @@ public class Pixel implements Comparable<Pixel> {
 	public int g;
 	public int r;
 
-	final public int x;
-	final public int y;
+	final public Point origin;
 	public boolean opened;
 	public boolean closed;
 
-	public Pixel (int[] arr, int x, int y) {
-		this.x = x;
-		this.y = y;
+	public Pixel (int[] arr, Point origin) {
+		this.origin = origin;
 
 		if (arr.length > 3) {
 			this.a = arr[3];
