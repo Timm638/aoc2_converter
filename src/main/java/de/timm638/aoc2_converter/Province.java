@@ -1,5 +1,11 @@
 package de.timm638.aoc2_converter;
 
+import org.jfree.svg.SVGGraphics2D;
+
+import java.awt.*;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -7,9 +13,6 @@ import java.util.List;
 public class Province {
 	static int counter = 0;
 	public int id = 0;
-	
-	public int[] x;
-	public int[] y;
 
 	private final Main main;
 	private final Pixel originPixel;
@@ -18,7 +21,6 @@ public class Province {
 	private final short[][] borderMap;
 	private final List<Point> nodeList;
 
-	// This constructor generates the bitM
 	public Province (Pixel[][] img, Main main, Point origin) {
 		id = counter;
 		counter++;
@@ -57,6 +59,9 @@ public class Province {
 				short b = 0;
 				// Direction contains all 8 possible directions, encoded in a bit
 				for (Direction d : Direction.values()) {
+					if (!d.isCardinal()) {
+						continue;
+					}
 					b += (short) (isSameColoured(
 							img,
 							originPixel,
@@ -91,23 +96,95 @@ public class Province {
 	}
 
 	// Generate an edge map and consumes the border map. Returns in clockwise order
-	private List<Point> collectBorder(Point startPoint) {
+	private List<Point> collectBorder(final Point startPoint) {
 		ArrayList<Point> nodeList = new ArrayList<>();
 		// Add start
-		nodeList.add(startPoint);
-		// Walk along the border
-		Direction curDirection = Direction.EAST;
-		Direction previousDirection = null;
+		// nodeList.add(startPoint);
+		// We initialize the start state
+		// Because the way the origin gets picked, the origin pixel must have a upper edge
+		Point curPoint;
+		Direction curDirection;
+		Direction previousDirection = Direction.EAST;
+		Point previousPoint = startPoint;
+		removeEdgeFromMap(startPoint, Direction.NORTH);
 
 		// We check if we have a border here
 		// 8 cases exists, we fetch the pixel into the current direction and check in the ccw of the current if there exists an edge
 		// 	 - If yes, then we continue in that direction
 		//   - If no, we continue to turn
+		// In this loop we process a block
+		while (true) {
+			// Set up initial state for next edge earch
+			curPoint = previousPoint.toDirection(previousDirection);
+			curDirection = previousDirection.rotateCW(-3);
+
+			// End the loop, if we are again at the start
+			if (curPoint.compareTo(startPoint) == 0) {
+				nodeList.add(previousPoint);
+				break;
+			}
+
+			// Find the next edge
+			Direction curEdgeDirection;
+			Point curEdgePoint;
+			boolean edgeExists;
+			do {
+				curDirection = curDirection.rotateCW(1);
+				curEdgeDirection = curDirection.getCardinalCCW();
+				curEdgePoint = curPoint.toDirection(curDirection);
+				// We have to not only check, if the edge exits, but also if that edge is part of our same group.
+				edgeExists = isEdgeOnBlock(curEdgePoint, curEdgeDirection);
+				// If diagonal, we have to check if the cardinal block between it is filled, otherwise we skip that edge.
+				if (!curEdgeDirection.isCardinal()) {
+					Point connectingPoint = curPoint.toDirection(curEdgeDirection.reverse());
+					edgeExists = edgeExists && borderMap[connectingPoint.x][connectingPoint.y] != -1;
+				}
+			} while (!edgeExists);
+
+			// TODO: If we traveled around a corner, we have to draw the edges we skipped over
+
+			// Remove that edge from the map numerically
+			removeEdgeFromMap(curPoint, curEdgeDirection);
+
+			// TODO: Check if we even have to put prev into the node list
+			nodeList.add(previousPoint);
+
+			exportBorderMapToSVG(String.format("%d_boerderMap.svg", id), nodeList, previousPoint, curPoint);
+			previousPoint = curPoint;
+			previousDirection = curDirection;
+
+
+		}
+
 
 		// This don't directly write down the nodes, but keeps track the two previous points and first write a point if the direction changes
 		// This prevents of multiple neighbouring points being in a line
 
 		return nodeList;
+	}
+
+	// Removes edge from borderMap as soon it is processed
+	private void removeEdgeFromMap(Point curPoint, Direction edgeDirection) {
+		// The value for the current block and both of it's neighbours have to be updates
+		Point anchorPoint = curPoint.toDirection(edgeDirection);
+		removeEdgeFromMapSingleCell(anchorPoint, edgeDirection);
+	}
+
+	private Boolean isEdgeOnBlock(Point checkPoint, Direction edgeDirection) {
+		if (checkPoint.isOutside(borderMap.length, borderMap[0].length)) {
+			return false;
+		}
+		short value = borderMap[checkPoint.x][checkPoint.y];
+		value &= (short) (1 << edgeDirection.ordinal());
+		return value != 0;
+	}
+
+	private void removeEdgeFromMapSingleCell(Point anchorPoint, Direction edgeDirection) {
+		Point curPoint = anchorPoint.toDirection(edgeDirection.reverse());
+		if (curPoint.isOutside(borderMap.length, borderMap[0].length) || borderMap[curPoint.x][curPoint.y] == -1) {
+			return;
+		}
+		borderMap[curPoint.x][curPoint.y] -= (short) edgeDirection.getValue();
 	}
 
 	// Returns null if no one is found
@@ -128,11 +205,93 @@ public class Province {
 
 	private static boolean isSameColoured (Pixel[][] img, Pixel curColor, int x, int y) {
 		// If outside, then they have to be included inthe border
-		if (x < 0 || x >= img.length || y < 0 || y >= img[0].length) {
+		if (new Point(x, y).isOutside(img.length, img[0].length)) {
 			return false;
 		}
 		// Explicit for easier debugging
 		Pixel checkedColor = img[x][y];
 		return curColor.compareTo(checkedColor) == 0;
+	}
+
+	// Writes generated corners to the file named after province id
+	public void exportToFile () throws IOException {
+		FileWriter fw = null;
+		fw = new FileWriter(String.valueOf(this.id));
+		BufferedWriter bw = new BufferedWriter(fw);
+		final int nSize = nodeList.size();
+		for (int i = 0; i < nSize; ++i) {
+			bw.write(String.valueOf(nodeList.get(i).y) + (i != nSize - 1 ? "," : ""));
+		}
+		bw.write(";");
+		for (int i = 0; i < nSize; ++i) {
+			bw.write(String.valueOf(nodeList.get(i).y) + (i != nSize - 1 ? "," : ""));
+		}
+		bw.close();
+		fw.close();
+	}
+
+	private void exportBorderMapToSVG(String file, List<Point> nodes, Point prevPoint, Point curPoint) {
+		final int scaling = 10;
+		final int width = borderMap.length;
+		final int height = borderMap[0].length;
+		Color solid = new Color(originPixel.r, originPixel.g, originPixel.b, 255);
+		Color semi = solid.darker();
+		SVGGraphics2D g2 = new SVGGraphics2D(width * scaling, height * scaling);
+		for (int x = 0; x < width; x++) {
+			for (int y = 0; y < height; y++) {
+				short v = borderMap[x][y];
+				if (v == -1) {
+					continue;
+				}
+				else if (v > 0) {
+					g2.setPaint(solid);
+				} else if (v == 0) {
+					g2.setPaint(semi);
+				}
+				g2.fillRect(x * scaling, y * scaling, 10, 10);
+				if (v > 0) {
+					g2.setPaint(semi);
+					final int xs = x * scaling;
+					final int ys = y * scaling;
+					final int hs = scaling / 2;
+					final int fs = scaling;
+					if (isEdgeOnBlock(new Point(x, y), Direction.EAST)) {
+						g2.fillPolygon(new int[]{xs + fs, xs + fs, xs + hs}, new int[]{ys, ys + fs, ys + hs}, 3);
+					}
+					if (isEdgeOnBlock(new Point(x, y), Direction.SOUTH)) {
+						g2.fillPolygon(new int[]{xs + fs, xs, xs + hs}, new int[]{ys + fs, ys + fs, ys + hs}, 3);
+					}
+					if (isEdgeOnBlock(new Point(x, y), Direction.WEST)) {
+						g2.fillPolygon(new int[]{xs, xs, xs + hs}, new int[]{ys + fs, ys, ys + hs}, 3);
+					}
+					if (isEdgeOnBlock(new Point(x, y), Direction.NORTH)) {
+						g2.fillPolygon(new int[]{xs, xs + fs, xs + hs}, new int[]{ys, ys, ys + hs}, 3);
+					}
+				}
+			}
+		}
+		if (nodes != null) {
+			g2.setColor(Color.yellow);
+			for (Point p : nodes) {
+				g2.fillOval(p.x * scaling - scaling/4, p.y * scaling - scaling/4, scaling/2, scaling/2);
+			}
+		}
+		if (prevPoint != null) {
+			g2.setColor(Color.blue);
+			g2.fillOval(prevPoint.x * scaling - scaling/4, prevPoint.y * scaling - scaling/4, scaling/2, scaling/2);
+		}
+		if (curPoint != null) {
+			g2.setColor(Color.green);
+			g2.fillOval(curPoint.x * scaling - scaling/4, curPoint.y * scaling - scaling/4, scaling/2, scaling/2);
+		}
+		try {
+			FileWriter fw = new FileWriter(file);
+			BufferedWriter bw = new BufferedWriter(fw);
+			bw.write(g2.getSVGDocument());
+			bw.close();
+			fw.close();
+		} catch (Exception e) {
+
+		}
 	}
 }

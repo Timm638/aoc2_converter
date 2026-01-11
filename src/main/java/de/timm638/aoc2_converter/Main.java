@@ -88,26 +88,11 @@ public class Main {
 		}
 
 		for (Province prov : provinceList) {
-			FileWriter fw = null;
-	        try {
-	            int i;
-	            fw = new FileWriter(prov.id + "");
-	            BufferedWriter bw = new BufferedWriter(fw);
-	            int nSize = prov.x.length;
-	            for (i = 0; i < nSize; ++i) {
-	                bw.write("" + prov.x[i] + (i != nSize - 1 ? "," : ""));
-	            }
-	            bw.write(";");
-	            nSize = prov.y.length;
-	            for (i = 0; i < nSize; ++i) {
-	                bw.write("" + prov.y[i] + (i != nSize - 1 ? "," : ""));
-	            }
-	            bw.close();
-	            fw.close();
-	        }
-	        catch (IOException ex) {
-	            print("AoCC");
-	        }
+			try {
+				prov.exportToFile();
+			} catch (IOException e) {
+				print(String.format("Failed exporting province id %d: %S", prov.id, e.toString()));
+			}
 		}
 
 			print("Finished!");
