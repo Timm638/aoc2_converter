@@ -116,20 +116,17 @@ public class Province {
 		//   - If no, we continue to turn
 		// In this loop we process a block
 		while (true) {
+
 			// Set up initial state for next edge earch
 			curPoint = previousPoint.toDirection(previousDirection);
 			curDirection = previousDirection.rotateCW(-3);
 
-			// End the loop, if we are again at the start
-			if (curPoint.compareTo(startPoint) == 0 && curDirection == Direction.NORTH) {
-				nodeList.add(previousPoint);
-				break;
-			}
 
 			// Find the next edge
 			Direction curEdgeDirection;
 			Point curEdgePoint;
 			boolean edgeExists;
+			boolean reachedStartState;
 			do {
 				curDirection = curDirection.rotateCW(1);
 				curEdgeDirection = curDirection.getCardinalCCW();
@@ -150,7 +147,8 @@ public class Province {
 					removeEdgeFromMap(curEdgePoint, curEdgeDirection);
 					nodeList.add(getFirstCorner(curEdgePoint, curEdgeDirection));
 				}
-			} while (!edgeExists && !(curPoint.compareTo(previousPoint) == 0 && curDirection == Direction.NORTH_WEST ));
+				reachedStartState = curPoint.compareTo(startPoint) == 0 && curDirection == Direction.NORTH_WEST;
+			} while (!edgeExists && !reachedStartState);
 
 			//
 
@@ -159,12 +157,14 @@ public class Province {
 
 			// TODO: Check if we even have to put prev into the node list
 
-
 			exportBorderMapToSVG(String.format("%d_boerderMap.svg", id), nodeList, previousPoint, curPoint);
 			previousPoint = curPoint;
 			previousDirection = curDirection;
 
-
+			// End the loop, if we are again at the start
+			if (reachedStartState) {
+				break;
+			}
 		}
 
 
