@@ -1,6 +1,7 @@
 package de.timm638.aoc2_converter;
 
 import org.jfree.svg.SVGGraphics2D;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.awt.*;
 import java.io.BufferedWriter;
@@ -35,6 +36,7 @@ public class Province {
 		// 16 = bottom edge is outside
 		// 64 = left edge is outside
 		borderMap = initBitmap(img);
+		exportBorderMapToSVG(String.format("%d_boerderMap.svg", id), null, null, null);
 
 		// Generate a border from the borderMap
 		// We want to identify the outer border and list them in clockwise direction
@@ -99,7 +101,7 @@ public class Province {
 	private List<Point> collectBorder(final Point startPoint) {
 		ArrayList<Point> nodeList = new ArrayList<>();
 		// Add start
-		// nodeList.add(startPoint);
+		nodeList.add(startPoint);
 		// We initialize the start state
 		// Because the way the origin gets picked, the origin pixel must have a upper edge
 		Point curPoint;
@@ -119,7 +121,7 @@ public class Province {
 			curDirection = previousDirection.rotateCW(-3);
 
 			// End the loop, if we are again at the start
-			if (curPoint.compareTo(startPoint) == 0) {
+			if (curPoint.compareTo(startPoint) == 0 && curDirection == Direction.NORTH) {
 				nodeList.add(previousPoint);
 				break;
 			}
@@ -135,19 +137,28 @@ public class Province {
 				// We have to not only check, if the edge exits, but also if that edge is part of our same group.
 				edgeExists = isEdgeOnBlock(curEdgePoint, curEdgeDirection);
 				// If diagonal, we have to check if the cardinal block between it is filled, otherwise we skip that edge.
-				if (!curEdgeDirection.isCardinal()) {
+				if (!curDirection.isCardinal()) {
 					Point connectingPoint = curPoint.toDirection(curEdgeDirection.reverse());
 					edgeExists = edgeExists && borderMap[connectingPoint.x][connectingPoint.y] != -1;
 				}
-			} while (!edgeExists);
 
-			// TODO: If we traveled around a corner, we have to draw the edges we skipped over
+				if (!edgeExists && curDirection.isCardinal()) {
+					// The next turns around the corner, we have to add an point
+					removeEdgeFromMap(curPoint, curDirection);
+					nodeList.add(getFirstCorner(curPoint, curDirection));
+				} else if (edgeExists && !curDirection.isCardinal()) {
+					removeEdgeFromMap(curEdgePoint, curEdgeDirection);
+					nodeList.add(getFirstCorner(curEdgePoint, curEdgeDirection));
+				}
+			} while (!edgeExists && !(curPoint.compareTo(previousPoint) == 0 && curDirection == Direction.NORTH_WEST ));
+
+			//
 
 			// Remove that edge from the map numerically
-			removeEdgeFromMap(curPoint, curEdgeDirection);
+			// removeEdgeFromMap(curPoint, curEdgeDirection);
 
 			// TODO: Check if we even have to put prev into the node list
-			nodeList.add(previousPoint);
+
 
 			exportBorderMapToSVG(String.format("%d_boerderMap.svg", id), nodeList, previousPoint, curPoint);
 			previousPoint = curPoint;
@@ -163,6 +174,27 @@ public class Province {
 		return nodeList;
 	}
 
+	// edgeDir is direction the edge shows
+	private Point getFirstCorner(Point curPoint, Direction edgeDir) {
+		switch (edgeDir) {
+			case NORTH:
+				return curPoint;
+			case EAST:
+				return curPoint.toDirection(Direction.EAST);
+			case SOUTH:
+				return curPoint.toDirection(Direction.SOUTH_EAST);
+			case WEST:
+				return curPoint.toDirection(Direction.SOUTH);
+			case NORTH_EAST:
+			case NORTH_WEST:
+			case SOUTH_EAST:
+				case SOUTH_WEST:
+					throw new NotImplementedException();
+
+		}
+		return null;
+	}
+
 	// Removes edge from borderMap as soon it is processed
 	private void removeEdgeFromMap(Point curPoint, Direction edgeDirection) {
 		// The value for the current block and both of it's neighbours have to be updates
@@ -175,6 +207,9 @@ public class Province {
 			return false;
 		}
 		short value = borderMap[checkPoint.x][checkPoint.y];
+		if (value < 0) {
+			return false;
+		}
 		value &= (short) (1 << edgeDirection.ordinal());
 		return value != 0;
 	}
@@ -278,11 +313,11 @@ public class Province {
 		}
 		if (prevPoint != null) {
 			g2.setColor(Color.blue);
-			g2.fillOval(prevPoint.x * scaling - scaling/4, prevPoint.y * scaling - scaling/4, scaling/2, scaling/2);
+			g2.fillOval(prevPoint.x * scaling - scaling/4 + scaling/2, prevPoint.y * scaling - scaling/4 + scaling/2, scaling/2, scaling/2);
 		}
 		if (curPoint != null) {
 			g2.setColor(Color.green);
-			g2.fillOval(curPoint.x * scaling - scaling/4, curPoint.y * scaling - scaling/4, scaling/2, scaling/2);
+			g2.fillOval(curPoint.x * scaling - scaling/4 + scaling/2, curPoint.y * scaling - scaling/4 + scaling/2, scaling/2, scaling/2);
 		}
 		try {
 			FileWriter fw = new FileWriter(file);
