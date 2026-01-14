@@ -22,6 +22,8 @@ public class Province {
 	private final short[][] borderMap;
 	private final List<Point> nodeList;
 
+	private final Direction[] cardinalDirections = new Direction[]{Direction.EAST, Direction.SOUTH, Direction.WEST, Direction.NORTH};
+
 	public Province (Pixel[][] img, Main main, Point origin) {
 		id = counter;
 		counter++;
@@ -100,15 +102,15 @@ public class Province {
 	// Generate an edge map and consumes the border map. Returns in clockwise order
 	private List<Point> collectBorder(final Point startPoint) {
 		ArrayList<Point> nodeList = new ArrayList<>();
-		// Add start
-		nodeList.add(startPoint);
 		// We initialize the start state
-		// Because the way the origin gets picked, the origin pixel must have a upper edge
-		Point curPoint;
-		Direction curDirection;
-		Direction previousDirection = Direction.EAST;
-		Point previousPoint = startPoint;
-		removeEdgeFromMap(startPoint, Direction.NORTH);
+		Direction initialEdgeDirection = findFreeEdge(startPoint);
+		Direction startDirection = initialEdgeDirection.rotateCCW(1);
+		Direction curDirection = startDirection;
+		Point curPoint = startPoint;
+		//nodeList.add(removeEdgeFromMap(startPoint, initialEdgeDirection));
+		Direction previousDirection;
+		Point previousPoint;
+
 
 		// We check if we have a border here
 		// 8 cases exists, we fetch the pixel into the current direction and check in the ccw of the current if there exists an edge
@@ -116,12 +118,6 @@ public class Province {
 		//   - If no, we continue to turn
 		// In this loop we process a block
 		while (true) {
-
-			// Set up initial state for next edge earch
-			curPoint = previousPoint.toDirection(previousDirection);
-			curDirection = previousDirection.rotateCW(-3);
-
-
 			// Find the next edge
 			Direction curEdgeDirection;
 			Point curEdgePoint;
@@ -141,50 +137,54 @@ public class Province {
 
 				if (!edgeExists && curDirection.isCardinal()) {
 					// The next turns around the corner, we have to add an point
-					removeEdgeFromMap(curPoint, curDirection);
-					nodeList.add(getFirstCorner(curPoint, curDirection));
+					nodeList.add(removeEdgeFromMap(curPoint, curDirection));
 				} else if (edgeExists && !curDirection.isCardinal()) {
-					removeEdgeFromMap(curEdgePoint, curEdgeDirection);
-					nodeList.add(getFirstCorner(curEdgePoint, curEdgeDirection));
+					nodeList.add(removeEdgeFromMap(curEdgePoint, curEdgeDirection));
 				}
-				reachedStartState = curPoint.compareTo(startPoint) == 0 && curDirection == Direction.NORTH_WEST;
+				reachedStartState = curEdgePoint.compareTo(startPoint) == 0 && countEdgesOnBlock(startPoint) == 0;
 			} while (!edgeExists && !reachedStartState);
 
-			//
-
-			// Remove that edge from the map numerically
-			// removeEdgeFromMap(curPoint, curEdgeDirection);
-
 			// TODO: Check if we even have to put prev into the node list
-
-			exportBorderMapToSVG(String.format("%d_boerderMap.svg", id), nodeList, previousPoint, curPoint);
+			// Set up initial state for next edge search
 			previousPoint = curPoint;
 			previousDirection = curDirection;
+			curPoint = curPoint.toDirection(curDirection);
+			curDirection = curDirection.rotateCCW(3);
+
+			exportBorderMapToSVG(String.format("%d_boerderMap.svg", id), nodeList, previousPoint, curPoint);
 
 			// End the loop, if we are again at the start
 			if (reachedStartState) {
 				break;
 			}
 		}
-
-
 		// This don't directly write down the nodes, but keeps track the two previous points and first write a point if the direction changes
 		// This prevents of multiple neighbouring points being in a line
 
 		return nodeList;
 	}
 
-	// edgeDir is direction the edge shows
+	private int countEdgesOnBlock(Point p) {
+		int i = 0;
+		for (Direction direction : cardinalDirections) {
+			if (isEdgeOnBlock(p, direction)) {
+				i += 1;
+			}
+		}
+		return i;
+	}
+
+	// edgeDir is along the normal of the edge
 	private Point getFirstCorner(Point curPoint, Direction edgeDir) {
 		switch (edgeDir) {
 			case NORTH:
 				return curPoint;
 			case EAST:
-				return curPoint.toDirection(Direction.EAST);
+				return new Point(curPoint.x + 1, curPoint.y);
 			case SOUTH:
-				return curPoint.toDirection(Direction.SOUTH_EAST);
+				return new Point(curPoint.x + 1, curPoint.y + 1);
 			case WEST:
-				return curPoint.toDirection(Direction.SOUTH);
+				return new Point(curPoint.x, curPoint.y + 1);
 			case NORTH_EAST:
 			case NORTH_WEST:
 			case SOUTH_EAST:
@@ -195,11 +195,30 @@ public class Province {
 		return null;
 	}
 
+	private Direction findFreeEdge(Point point) {
+		for (Direction d : cardinalDirections) {
+			if (isEdgeOnBlock(point, d)) {
+				return d;
+			}
+		}
+		return null;
+	}
+
 	// Removes edge from borderMap as soon it is processed
-	private void removeEdgeFromMap(Point curPoint, Direction edgeDirection) {
+	// Returns point to put into the nodelist
+	private Point removeEdgeFromMap(Point curPoint, Direction edgeDirection) {
 		// The value for the current block and both of it's neighbours have to be updates
 		Point anchorPoint = curPoint.toDirection(edgeDirection);
 		removeEdgeFromMapSingleCell(anchorPoint, edgeDirection);
+		return getFirstCorner(curPoint, edgeDirection);
+	}
+
+	private void removeEdgeFromMapSingleCell(Point anchorPoint, Direction edgeDirection) {
+		Point curPoint = anchorPoint.toDirection(edgeDirection.reverse());
+		if (curPoint.isOutside(borderMap.length, borderMap[0].length) || borderMap[curPoint.x][curPoint.y] == -1) {
+			return;
+		}
+		borderMap[curPoint.x][curPoint.y] -= (short) edgeDirection.getValue();
 	}
 
 	private Boolean isEdgeOnBlock(Point checkPoint, Direction edgeDirection) {
@@ -212,14 +231,6 @@ public class Province {
 		}
 		value &= (short) (1 << edgeDirection.ordinal());
 		return value != 0;
-	}
-
-	private void removeEdgeFromMapSingleCell(Point anchorPoint, Direction edgeDirection) {
-		Point curPoint = anchorPoint.toDirection(edgeDirection.reverse());
-		if (curPoint.isOutside(borderMap.length, borderMap[0].length) || borderMap[curPoint.x][curPoint.y] == -1) {
-			return;
-		}
-		borderMap[curPoint.x][curPoint.y] -= (short) edgeDirection.getValue();
 	}
 
 	// Returns null if no one is found
@@ -255,11 +266,11 @@ public class Province {
 		BufferedWriter bw = new BufferedWriter(fw);
 		final int nSize = nodeList.size();
 		for (int i = 0; i < nSize; ++i) {
-			bw.write(String.valueOf(nodeList.get(i).y) + (i != nSize - 1 ? "," : ""));
+			bw.write(String.valueOf(nodeList.get(i).y * main.scale) + (i != nSize - 1 ? "," : ""));
 		}
 		bw.write(";");
 		for (int i = 0; i < nSize; ++i) {
-			bw.write(String.valueOf(nodeList.get(i).y) + (i != nSize - 1 ? "," : ""));
+			bw.write(String.valueOf(nodeList.get(i).y * main.scale) + (i != nSize - 1 ? "," : ""));
 		}
 		bw.close();
 		fw.close();
