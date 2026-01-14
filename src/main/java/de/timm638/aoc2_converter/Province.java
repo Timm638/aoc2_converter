@@ -22,7 +22,7 @@ public class Province {
 	private final short[][] borderMap;
 	private final List<Point> nodeList;
 
-	private final Direction[] cardinalDirections = new Direction[]{Direction.EAST, Direction.SOUTH, Direction.WEST, Direction.NORTH};
+	private static final Direction[] cardinalDirections = new Direction[]{Direction.EAST, Direction.SOUTH, Direction.WEST, Direction.NORTH};
 
 	public Province (Pixel[][] img, Main main, Point origin) {
 		id = counter;
@@ -58,6 +58,8 @@ public class Province {
 				if (img[x][y].compareTo(originPixel) != 0) {
 					arr[x][y] = -1;
 					continue;
+				} else {
+					main.provinceMap[x][y] = id;
 				}
 				// Calculate contours
 				short b = 0;
@@ -89,10 +91,8 @@ public class Province {
 		while (innerOriginPoint != null) {
 			// Add origin point as anchor point to reset the position between each inner edge
 			nodeList.add(origin);
-			// Collect points and make them counter clock wise
-			List<Point> innerEdges = collectBorder(innerOriginPoint);
-			Collections.reverse(innerEdges);
-			nodeList.addAll(innerEdges);
+			// Collect points
+			nodeList.addAll(collectBorder(innerOriginPoint));
 			// Prepare for next iteration
 			innerOriginPoint = findNextInnerStartPoint();
 		}
@@ -141,7 +141,8 @@ public class Province {
 				} else if (edgeExists && !curDirection.isCardinal()) {
 					nodeList.add(removeEdgeFromMap(curEdgePoint, curEdgeDirection));
 				}
-				reachedStartState = curEdgePoint.compareTo(startPoint) == 0 && countEdgesOnBlock(startPoint) == 0;
+				reachedStartState = (curEdgePoint.compareTo(startPoint) == 0) && countEdgesOnBlock(startPoint) == 0 ||
+						(curPoint.compareTo(startPoint) == 0 && curDirection == startDirection);
 			} while (!edgeExists && !reachedStartState);
 
 			// TODO: Check if we even have to put prev into the node list
@@ -231,6 +232,13 @@ public class Province {
 		}
 		value &= (short) (1 << edgeDirection.ordinal());
 		return value != 0;
+	}
+
+	public Boolean isPixelInProvince(Point p) {
+		if (p.isOutside(borderMap.length, borderMap[0].length)) {
+			return false;
+		};
+		return borderMap[p.x][p.y] >= 0;
 	}
 
 	// Returns null if no one is found

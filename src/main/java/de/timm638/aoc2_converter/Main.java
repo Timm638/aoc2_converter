@@ -29,6 +29,9 @@ public class Main {
 	@Parameter(names={"--verbose", "-v"}, description = "Prints progress to console")
 	Boolean verbose = Boolean.FALSE;
 
+	@Parameter(names={"--multiple-province-per-color", "-m"}, description = "Split up disconnected provinces with the same color")
+	Boolean splitUpSameColor = Boolean.FALSE;
+
 	int[][] provinceMap;
 
 	private void print(String str) {
@@ -61,9 +64,8 @@ public class Main {
             throw new RuntimeException(e);
         }
 
-
-
 		Pixel[][] pixels = convertImageToArray(img);
+		provinceMap = initProvinceMap(img.getWidth(), img.getHeight());
 
 		LinkedList<Province> provinceList = new LinkedList<Province>();
 		// Direction.debugPrintDirections();
@@ -72,11 +74,10 @@ public class Main {
 		int x = 0;
 		while (y < height) {
 
-			if (pixels[x][y] != null) {
-
+			if (provinceMap[x][y] == -1) {
 				print("Generating Province #" + provinceList.size() + " of Color " + pixels[x][y].returnAsText());
 				Province prov = new Province(pixels, this, new Point(x, y));
-
+				provinceList.add(prov);
 
 			} else {
 				x++;
@@ -104,6 +105,16 @@ public class Main {
 			}
 			print(s);
 		} */
+	}
+
+	private int[][] initProvinceMap(int width, int height) {
+		int[][] arr = new int[width][height];
+		for (int x = 0; x < width; x++) {
+			for (int y = 0; y < height; y++) {
+				arr[x][y] = -1;
+			}
+		}
+		return arr;
 	}
 
 	private Pixel[][] convertImageToArray (BufferedImage image) {
