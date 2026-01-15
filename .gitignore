@@ -1,4 +1,5 @@
-*,svg
+*.svg
+output
 
 # Compiled class file
 *.class

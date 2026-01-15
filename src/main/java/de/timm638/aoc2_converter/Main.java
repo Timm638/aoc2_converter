@@ -6,6 +6,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedList;
@@ -63,7 +64,14 @@ public class Main {
 	}
 
 	public void start () {
-		BufferedImage img;
+		// Ensure output folder exists
+        try {
+            Files.createDirectories(outputPath);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        BufferedImage img;
 		try {
 			img = ImageIO.read(inputImage);
 			width = img.getWidth();
