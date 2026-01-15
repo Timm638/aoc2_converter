@@ -98,7 +98,7 @@ public class Province {
 			// Prepare for next iteration
 			innerOriginPoint = findNextBorderPoint();
 		}
-		return nodeList;
+		return cleanupList(nodeList);
 	}
 
 	// Generate an edge map and consumes the border map. Returns in clockwise order
@@ -349,5 +349,20 @@ public class Province {
 		} catch (Exception e) {
 
 		}
+	}
+
+	// Remove points directly on line
+	List<Point> cleanupList(List<Point> list) {
+		for (int i = 0; i < list.size(); i++) {
+			int len = list.size();
+			Point pre = list.get((i + len - 1) % len);
+			Point cur = list.get(i);
+			Point nex = list.get((i + 1) % len);
+			if ((pre.x == cur.x && cur.x == nex.x) || (pre.y == cur.y && cur.y == nex.y)) {
+				list.remove(i);
+				i--;
+			}
+		}
+		return list;
 	}
 }

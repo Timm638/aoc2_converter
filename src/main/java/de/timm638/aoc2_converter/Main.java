@@ -125,24 +125,6 @@ public class Main {
 		return pixels;
 	}
 
-	// In cardinal directions
-	private Pixel[] getCardinalNeighbours(Pixel[][] pixels, int x, int y) {
-		Pixel [] arr = {null, null, null, null};
-		if (x > 0) {
-			arr[0] = pixels[x - 1][y];
-		}
-		if (x < pixels.length - 1) {
-			arr[1] = pixels[x + 1][y];
-		}
-		if (y > 0) {
-			arr[2] = pixels[x][y - 1];
-		}
-		if (y < pixels[0].length - 1) {
-			arr[3] = pixels[x][y + 1];
-		}
-		return arr;
-	}
-
 	private NodeList cleanupList (NodeList nl) {
 
 		LinkedList<Integer> nodeX = nl.nodeX;
