@@ -1,13 +1,13 @@
 package de.timm638.aoc2_converter;
 
 import java.awt.image.BufferedImage;
-import java.awt.image.DataBuffer;
 import java.awt.image.Raster;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Collections;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.LinkedList;
 
 import javax.imageio.ImageIO;
@@ -15,6 +15,7 @@ import javax.imageio.ImageIO;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.converters.FileConverter;
+import com.beust.jcommander.converters.PathConverter;
 
 public class Main {
 
@@ -26,15 +27,22 @@ public class Main {
 	private int height;
 	private int width;
 
+	@Parameter(names={"--output", "-o"}, converter = PathConverter.class, description = "Path to an folder")
+	Path outputPath = Paths.get(System.getProperty("user.dir"));
+
 	@Parameter(names={"--verbose", "-v"}, description = "Prints progress to console")
 	Boolean verbose = Boolean.FALSE;
 
+	@Parameter(names={"--debug", "-d"}, description = "Outputs debug .svg and other auxillary files")
+	Boolean debugOutput = Boolean.FALSE;
+
 	@Parameter(names={"--multiple-province-per-color", "-m"}, description = "Split up disconnected provinces with the same color")
 	Boolean splitUpSameColor = Boolean.FALSE;
+	// TODO: Implement that
 
 	int[][] provinceMap;
 
-	private void print(String str) {
+	private void verbosePrint(String str) {
 		if (verbose) {
 			System.out.println(str);
 		}
@@ -55,14 +63,14 @@ public class Main {
 	}
 
 	public void start () {
-        BufferedImage img;
-        try {
-            img = ImageIO.read(inputImage);
+		BufferedImage img;
+		try {
+			img = ImageIO.read(inputImage);
 			width = img.getWidth();
 			height = img.getHeight();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 
 		Pixel[][] pixels = convertImageToArray(img);
 		provinceMap = initProvinceMap(img.getWidth(), img.getHeight());
@@ -75,7 +83,7 @@ public class Main {
 		while (y < height) {
 
 			if (provinceMap[x][y] == -1) {
-				print("Generating Province #" + provinceList.size() + " of Color " + pixels[x][y].returnAsText());
+				verbosePrint("Generating Province #" + provinceList.size() + " of Color " + pixels[x][y].returnAsText());
 				Province prov = new Province(pixels, this, new Point(x, y));
 				provinceList.add(prov);
 
@@ -90,13 +98,35 @@ public class Main {
 
 		for (Province prov : provinceList) {
 			try {
-				prov.exportToFile();
+				// export to files
+				FileWriter fw = null;
+				fw = new FileWriter(outputPath.resolve(Paths.get(String.valueOf(prov.id))).toFile());
+				BufferedWriter bw = new BufferedWriter(fw);
+				prov.exportToWriter(bw);
+				bw.close();
 			} catch (IOException e) {
-				print(String.format("Failed exporting province id %d: %S", prov.id, e.toString()));
+				verbosePrint(String.format("Failed exporting province id %d: %S", prov.id, e.toString()));
 			}
 		}
 
-			print("Finished!");
+		// Export to mapAoC2_v2.txt
+		try {
+			// export to files
+			FileWriter fw = null;
+			fw = new FileWriter(outputPath.resolve(Paths.get("mapAoC2_v2.txt")).toFile());
+			BufferedWriter bw = new BufferedWriter(fw);
+			for (Province prov : provinceList) {
+				prov.exportToWriter(bw, "\n");
+				bw.write("\n");
+			}
+			bw.close();
+		} catch (IOException e) {
+			verbosePrint(String.format("Failed exporting mapAoC2_v2.txt: %S", e.toString()));
+		}
+
+
+
+		verbosePrint("Finished!");
 	}
 
 	private int[][] initProvinceMap(int width, int height) {
@@ -123,48 +153,5 @@ public class Main {
 		}
 
 		return pixels;
-	}
-
-	private NodeList cleanupList (NodeList nl) {
-
-		LinkedList<Integer> nodeX = nl.nodeX;
-		LinkedList<Integer> nodeY = nl.nodeY;
-
-		for (int i = 0; i < nodeX.size(); i++) {
-			int nextNode = (i + 1) % nodeX.size();
-			int lastNode = (i - 1);
-			if (lastNode < 0) lastNode += nodeX.size();
-
-			//Last to Cur
-			int lastDeltaX = nodeX.get(lastNode) - nodeX.get(i);
-			int lastDeltaY = nodeY.get(lastNode) - nodeY.get(i);
-			float lastDeltaXn;
-			float lastDeltaYn;
-			if ((lastDeltaX + lastDeltaY) != 0) {
-				lastDeltaXn = lastDeltaX / (lastDeltaX + lastDeltaY);
-				lastDeltaYn = lastDeltaY / (lastDeltaX + lastDeltaY);
-			} else {
-				lastDeltaXn = 0;
-				lastDeltaYn = 0;
-			}
-			//Cur to Next
-			int nextDeltaX = nodeX.get(i) - nodeX.get(nextNode);
-			int nextDeltaY = nodeY.get(i) - nodeY.get(nextNode);
-			float nextDeltaXn;
-			float nextDeltaYn;
-			if ((nextDeltaX + nextDeltaY) != 0) {
-				 nextDeltaXn = nextDeltaX / (nextDeltaX + nextDeltaY);
-				nextDeltaYn = nextDeltaY / (nextDeltaX + nextDeltaY);
-			} else {
-				nextDeltaXn = 0;
-				nextDeltaYn = 0;
-			}
-			if (nextDeltaXn == lastDeltaXn && nextDeltaYn == lastDeltaYn) {
-				nodeX.remove(i);
-				nodeY.remove(i);
-				i--;
-			}
-		}
-		return new NodeList(nodeX, nodeY);
 	}
 }

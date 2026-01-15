@@ -5,8 +5,10 @@ import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.awt.*;
 import java.io.BufferedWriter;
-import java.io.FileWriter;
+import java.io.Writer;
 import java.io.IOException;
+import java.nio.file.Paths;
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,7 +20,7 @@ public class Province {
 	private final Pixel originPixel;
 	private final Point origin;
 
-	private final short[][] borderMap;
+	private short[][] borderMap;
 	private final List<Point> nodeList;
 
 	private static final Direction[] cardinalDirections = new Direction[]{Direction.EAST, Direction.SOUTH, Direction.WEST, Direction.NORTH};
@@ -37,13 +39,18 @@ public class Province {
 		// 16 = bottom edge is outside
 		// 64 = left edge is outside
 		borderMap = initBitmap(img);
-		exportBorderMapToSVG(String.format("%d_boerderMap.svg", id), null, null, null);
+		if (main.debugOutput) {
+			exportBorderMapToSVG(String.format("%d_boerderMap.svg", id), null, null, null);
+		}
 
 		// Generate a border from the borderMap
 		// We want to identify the outer border and list them in clockwise direction
 		// After that, if any inner borders are left, then for each line of inner edge, we repeat the origin point and
 		// paste them in counterclockwise direction. This shows up correct in the map editor
 		nodeList = initEdges();
+
+		// Dealloc borderMap
+		borderMap = null;
 	}
 
 	private short[][] initBitmap(Pixel[][] img) {
@@ -85,11 +92,12 @@ public class Province {
 		ArrayList<Point> nodeList = new ArrayList<>();
 		// Collect outer border
 		nodeList.addAll(collectBorder(origin));
+		final Point firstPoint = nodeList.get(0);
 		// Collect inner border
 		Point innerOriginPoint = findNextBorderPoint();
 		while (innerOriginPoint != null) {
 			// Add first point as anchor point to reset the position between each inner edge
-			nodeList.add(nodeList.get(0));
+			nodeList.add(firstPoint);
 			// Collect points
 			List<Point> borderList = collectBorder(innerOriginPoint);
 			// Re-add first point to prevent misrenders from previous shape
@@ -154,7 +162,9 @@ public class Province {
 			curPoint = curPoint.toDirection(curDirection);
 			curDirection = curDirection.rotateCCW(3);
 
-			exportBorderMapToSVG(String.format("%d_boerderMap.svg", id), nodeList, previousPoint, curPoint);
+			if (main.debugOutput) {
+				exportBorderMapToSVG(String.format("%d_boerderMap.svg", id), nodeList, previousPoint, curPoint);
+			}
 
 			// End the loop, if we are again at the start
 			if (reachedStartState) {
@@ -270,20 +280,19 @@ public class Province {
 	}
 
 	// Writes generated corners to the file named after province id
-	public void exportToFile () throws IOException {
-		FileWriter fw = null;
-		fw = new FileWriter(String.valueOf(this.id));
-		BufferedWriter bw = new BufferedWriter(fw);
+	public void exportToWriter (Writer writer, String delimiter) throws IOException {
 		final int nSize = nodeList.size();
 		for (int i = 0; i < nSize; ++i) {
-			bw.write(String.valueOf(nodeList.get(i).x * main.scale) + (i != nSize - 1 ? "," : ""));
+			writer.write(String.valueOf(nodeList.get(i).x * main.scale) + (i != nSize - 1 ? "," : ""));
 		}
-		bw.write(";");
+		writer.write(delimiter);
 		for (int i = 0; i < nSize; ++i) {
-			bw.write(String.valueOf(nodeList.get(i).y * main.scale) + (i != nSize - 1 ? "," : ""));
+			writer.write(String.valueOf(nodeList.get(i).y * main.scale) + (i != nSize - 1 ? "," : ""));
 		}
-		bw.close();
-		fw.close();
+	}
+
+	public void exportToWriter(Writer writer) throws IOException {
+		exportToWriter(writer, ";");
 	}
 
 	private void exportBorderMapToSVG(String file, List<Point> nodes, Point prevPoint, Point curPoint) {
