@@ -97,14 +97,6 @@ public class Main {
 		}
 
 			print("Finished!");
-		/*
-		for (int y = 0; y < height; y++) {
-			String s = y + ": ";
-			for (int x = 0; x < width; x++) {
-				s += "[" + pixels[x][y].returnAsText() + "], ";
-			}
-			print(s);
-		} */
 	}
 
 	private int[][] initProvinceMap(int width, int height) {

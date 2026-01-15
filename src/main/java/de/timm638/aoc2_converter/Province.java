@@ -8,7 +8,6 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class Province {
@@ -87,14 +86,17 @@ public class Province {
 		// Collect outer border
 		nodeList.addAll(collectBorder(origin));
 		// Collect inner border
-		Point innerOriginPoint = findNextInnerStartPoint();
+		Point innerOriginPoint = findNextBorderPoint();
 		while (innerOriginPoint != null) {
-			// Add origin point as anchor point to reset the position between each inner edge
-			nodeList.add(origin);
+			// Add first point as anchor point to reset the position between each inner edge
+			nodeList.add(nodeList.get(0));
 			// Collect points
-			nodeList.addAll(collectBorder(innerOriginPoint));
+			List<Point> borderList = collectBorder(innerOriginPoint);
+			// Re-add first point to prevent misrenders from previous shape
+			borderList.add(borderList.get(0));
+			nodeList.addAll(borderList);
 			// Prepare for next iteration
-			innerOriginPoint = findNextInnerStartPoint();
+			innerOriginPoint = findNextBorderPoint();
 		}
 		return nodeList;
 	}
@@ -242,7 +244,7 @@ public class Province {
 	}
 
 	// Returns null if no one is found
-	private Point findNextInnerStartPoint() {
+	private Point findNextBorderPoint() {
 		final int width = borderMap.length;
 		final int height = borderMap[0].length;
 		for (int x = 0; x < width; x++) {
@@ -274,7 +276,7 @@ public class Province {
 		BufferedWriter bw = new BufferedWriter(fw);
 		final int nSize = nodeList.size();
 		for (int i = 0; i < nSize; ++i) {
-			bw.write(String.valueOf(nodeList.get(i).y * main.scale) + (i != nSize - 1 ? "," : ""));
+			bw.write(String.valueOf(nodeList.get(i).x * main.scale) + (i != nSize - 1 ? "," : ""));
 		}
 		bw.write(";");
 		for (int i = 0; i < nSize; ++i) {
